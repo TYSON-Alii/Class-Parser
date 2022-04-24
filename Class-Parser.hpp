@@ -74,7 +74,7 @@ public:
 					inline_comment = false;
 			}
 			else if (comment_c) {
-				if (*i == '*' and i + 1 != code.end() and *(i+1) == '/')
+				if (*i == '/' and *(i - 1) == '*')
 					comment_c = false;
 			}
 			else
@@ -228,7 +228,7 @@ public:
 				};
 				break;
 			case class_mem:
-				if (i == className and *(j + 1) == "(" and *(j + 2) == ")") {
+				if (i == className and *(j + 1) == "(") {
 					cons_c = true;
 					temp_mem.name = i;
 					d = mem_after;
