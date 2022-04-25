@@ -27,14 +27,14 @@ public:
 			list<str> tokens;
 			str pointers;
 		} type;
-		str name, value;
+		str name, value, args;
 		bool is_func = false;
 	};
 	mem_t temp_mem;
 	struct cons_t {
 		acces_t acces = priv;
 		list<str> tokens;
-		str value;
+		str value, args;
 	};
 	list<cons_t> constructors;
 	str className;
@@ -44,14 +44,15 @@ public:
 	};
 	list<base_t> baseClass;
 	base_t temp_base;
-	list<str> keywords = { "nullptr", "false", "true" };
+	// list<str> keywords = { "nullptr", "false", "true" }; now not required
 	list<str> tokens = { "const", "constexpr", "virtual", "static", "inline", "explicit", "friend", "volatile", "short", "long", "signed", "unsigned" };
-	list<str> types = { "auto", "bool", "char", "int", "float", "double", "void", "string", "str" };
+	list<str> types;// = { "auto", "bool", "char", "int", "float", "double", "void", "string", "str" };
 	ParseClass(const str& _code) : code(_code) {
 		static const auto& new_temp = [&]() { 
 			temp_mem.is_func = false;
 			temp_mem.value.clear();
 			temp_mem.name.clear();
+			temp_mem.args.clear();
 			temp_mem.type.tokens.clear();
 			temp_mem.type.name.clear();
 			temp_mem.type.pointers.clear();
@@ -183,13 +184,15 @@ public:
 		};
 		split = fixed_split;
 		fixed_split.clear();
+		temp_str.clear();
 		const auto& is_in = [](const str& v, const list<str>& l) { for (const auto& i : l) if (v == i) return true; return false; };
-		enum class durum : unsigned char { no, class_name, after_class_name, class_base, class_acces, class_mem, mem_type, mem_val, mem_name, mem_after, func_args, func_body, func_var, func_code };
+		enum class durum : unsigned char { no, class_name, after_class_name, class_base, class_acces, class_mem, mem_type, mem_val, mem_name, mem_after, func_args, func_body, func_var, func_code, type_alias, typedef_alias };
 		using enum durum;
 		acces_t acces = priv;
 		durum d = no;
 		bool cons_c = false;
 		//for_each(split.begin(), split.end(), [](const auto& v) { cout << v << '\n'; });
+		int bracket_c = 0, cbracket_c = 0;
 		for (auto j = split.begin(); j != split.end(); j++) {
 			const auto& i = *j;
 			switch (d) {
@@ -233,6 +236,12 @@ public:
 					temp_mem.name = i;
 					d = mem_after;
 				}
+				else if (i == "using") {
+					d = type_alias;
+				}
+				else if (i == "typedef") {
+					d = typedef_alias;
+				}
 				else if (i == "public"s) {
 					temp_mem.acces = pub;
 					d = class_acces;
@@ -257,14 +266,34 @@ public:
 					d = mem_name;
 				}
 				else {
-					types.push_back(i);
-					temp_mem.type.name = i;
-					while (j + 1 != split.end() and (*(j + 1) == "&" or *(j + 1) == "*" or *(j + 1) == "&&" or *(j + 1) == "**")) {
-						j++;
-						temp_mem.type.pointers += *j;
-					};
-					d = mem_name;
-				}
+					if (i != "{" and i != "}" and
+						i != "[" and i != "]" and
+						i != ";" and i != ",") {
+						types.push_back(i);
+						temp_mem.type.name = i;
+						while (j + 1 != split.end() and (*(j + 1) == "&" or *(j + 1) == "*" or *(j + 1) == "&&" or *(j + 1) == "**")) {
+							j++;
+							temp_mem.type.pointers += *j;
+						};
+						d = mem_name;
+					}
+					else
+						d = class_mem;
+				};
+				break;
+			case type_alias:
+				if (*(j + 1) == "=") {
+					temp_str = *j;
+					while (*j != ";") j++;
+					types.push_back(temp_str);
+					temp_str.clear();
+					d = class_mem;
+				};
+				break;
+			case typedef_alias:
+				while (*j != ";") j++;
+				types.push_back(*(j - 1));
+				d = class_mem;
 				break;
 			case class_acces:
 				if (i == ":"s)
@@ -282,6 +311,7 @@ public:
 				}
 				else if (i == "(") {
 					temp_mem.is_func = true;
+					bracket_c = 1;
 					d = func_args;
 				}
 				else if (i == "[") {
@@ -311,8 +341,16 @@ public:
 				break;
 			case func_args:
 				if (i == ")") {
-					d = func_body;
-				};
+					bracket_c--;
+					if (bracket_c == 0) {
+						temp_mem.args = ltrim(temp_mem.args);
+						d = func_body;
+					};
+				}
+				else if (i == "(")
+					bracket_c++;
+				else
+					temp_mem.args += " "s + i;
 				break;
 			case func_body:
 				if (i == ";") {
@@ -320,6 +358,7 @@ public:
 						cons_t temp_c;
 						temp_c.acces = temp_mem.acces;
 						temp_c.tokens = temp_mem.type.tokens;
+						temp_c.args = temp_mem.args;
 						constructors.push_back(temp_c);
 						cons_c = false;
 					}
@@ -329,15 +368,17 @@ public:
 					d = class_mem;
 				}
 				else if (i != "{") {
-					d = func_var;
+					temp_mem.value += " "s + *j;
+					// d = func_var;
 				}
 				else {
+					cbracket_c = 1;
 					d = func_code;
 				};
 				break;
 			case func_var:
-				while (j + 1 != split.end() and *j != "{" and *j != ";") {
-					temp_mem.value += *j;
+				while (j != split.end() and *j != "{" and *j != ";") {
+					temp_mem.value += " "s + *j;
 					j++;
 				};
 				if (*j == "{")
@@ -348,6 +389,7 @@ public:
 						temp_c.acces = temp_mem.acces;
 						temp_c.tokens = temp_mem.type.tokens;
 						temp_c.value = temp_mem.value;
+						temp_c.args = temp_mem.args;
 						constructors.push_back(temp_c);
 						cons_c = false;
 					}
@@ -358,15 +400,24 @@ public:
 				};
 				break;
 			case func_code:
-				while (j + 1 != split.end() and *j != "}") {
+				temp_mem.value += " {";
+				while (j + 1 != split.end()) {
+					if (*j == "}")
+						cbracket_c--;
+					else if (*j == "{")
+						cbracket_c++;
+					if (cbracket_c == 0)
+						break;
 					temp_mem.value += " "s + *j;
 					j++;
 				};
+				temp_mem.value += " }";
 				if (cons_c) {
 					cons_t temp_c;
 					temp_c.acces = temp_mem.acces;
 					temp_c.tokens = temp_mem.type.tokens;
 					temp_c.value = temp_mem.value;
+					temp_c.args = temp_mem.args;
 					constructors.push_back(temp_c);
 					cons_c = false;
 				}
