@@ -5,7 +5,7 @@ Features:
 - [ ] Comments
 - [ ] Debug
 - [ ] Templates
-- [ ] using Specifier
+- [x] using/typedef Specifier
 - [ ] Nested Classes
 - Constructors
   - [x] Accesbility (public, private or protected)
@@ -23,7 +23,7 @@ Features:
 - Functions
   - [x] Accesbility
   - [x] Name
-  - [ ] Arguments
+  - [x] Arguments
   - [x] Function Body
   - Type
     - [x] Name
@@ -36,12 +36,14 @@ using namespace magic_enum;
 const str& code = R"(
 class Shape : public Transform, Entity {
 public: // remove comments
+	using str = string;
+	typedef void* ptr;
 	Shape() = default;
 	Shape(const Shape&) = delete;
-	virtual void Destroy();
+	virtual void Destroy(str falan);
 	const char* tag = nullptr; // why not std::string
 	bool froze = false;
-	inline vex3f& move(const vex3f& xyz) { return pos += xyz; }; /* dfsafesd */
+	inline vex3f& move(const vex3f& xyz) const { return pos += xyz; }; /* dfsafesd */
 	Shape& reset() { return (*this) = Shape(); };
 	constexpr mat4 matrix() const { };
 	// list<Shape*> child; now not support
@@ -73,18 +75,20 @@ auto main() -> int {
 				cout << token << ' ';
 			cout << mem.type.name << mem.type.pointers << ' ';
 			if (mem.is_func)
-				cout << mem.name << "() = ";
+				cout << mem.name << "(" << mem.args << ") = ";
 			else
 				cout << mem.name << " = ";
 			if (!mem.value.empty()) {
-				if (mem.is_func) cout << "{";
-					cout << mem.value;
-				if (mem.is_func) cout << " }";
-				cout << '\n';
+				cout << mem.value << '\n';
 			}
 			else
 				cout << "None\n";
 		};
+	};
+	if (!parser.types.empty()) {
+		cout << "Types:\n";
+		for (const auto& type : parser.types)
+			cout << "- " << type << '\n';
 	};
 };
 ```
@@ -95,13 +99,24 @@ Base Classes:
 - pub class Transform
 - priv class Entity
 Constructors:
-- pub Shape() = default
-- pub Shape() = delete
+- pub Shape() =
+- pub Shape() =
 Members:
-- pub virtual void Destroy() = None
+- pub virtual void Destroy(str falan) = None
 - pub const char* tag = nullptr
 - pub bool froze = false
-- pub inline vex3f& move() = { return pos += xyz ; }
-- pub Shape& reset() = { return ( * this ) = Shape ( ) ; }
-- pub constexpr mat4 matrix() = None
+- pub inline vex3f& move(const vex3f & xyz) =  const { return pos += xyz ; }
+- pub Shape& reset() =  { return ( * this ) = Shape ( ) ; }
+- pub constexpr mat4 matrix() =  const { }
+Types:
+- Shape
+- Transform
+- Entity
+- str
+- ptr
+- void
+- char
+- bool
+- vex3f
+- mat4
 ```
