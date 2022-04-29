@@ -12,7 +12,8 @@ inline str rtrim(str s) {
 	s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
 	return s;
 };
-inline str trim(std::string& s) { return rtrim(ltrim(s)); };
+
+inline str trim(const str& s) { return rtrim(ltrim(s)); };
 class ParseClass {
 public:
 	template <typename T>
@@ -22,19 +23,26 @@ public:
 	using enum acces_t;
 	struct mem_t {
 		acces_t acces = priv;
-		struct {
+		struct type_t {
 			str name;
 			list<str> tokens;
 			str pointers;
 		} type;
-		str name, value, args;
+		struct arg_t {
+			str type, name, value;
+			list<str> tokens;
+			str pointers;
+		};
+		str name, value;
+		list<arg_t> args;
 		bool is_func = false;
 	};
 	mem_t temp_mem;
 	struct cons_t {
 		acces_t acces = priv;
 		list<str> tokens;
-		str value, args;
+		str value;
+		list<mem_t::arg_t> args;
 	};
 	list<cons_t> constructors;
 	str className;
@@ -48,7 +56,7 @@ public:
 	list<str> tokens = { "const", "constexpr", "virtual", "static", "inline", "explicit", "friend", "volatile", "short", "long", "signed", "unsigned" };
 	list<str> types;// = { "auto", "bool", "char", "int", "float", "double", "void", "string", "str" };
 	ParseClass(const str& _code) : code(_code) {
-		static const auto& new_temp = [&]() { 
+		static const auto& new_temp = [&]() {
 			temp_mem.is_func = false;
 			temp_mem.value.clear();
 			temp_mem.name.clear();
@@ -57,6 +65,9 @@ public:
 			temp_mem.type.name.clear();
 			temp_mem.type.pointers.clear();
 		};
+		static const list<str>& ops = { "{", "}","[", "]", "(", ")", "<", ">", "=", "+", "-", "/", "*", "%", "&", "|", "^", ":", ",", ";", "\"", "?", "==", "!=", ">=", "<=", "<<", ">>", "--", "++", "&&", "||", "+=", "-=", "*=", "/=", "%=", "^=", "|=", "&=", "->", "::" };
+		static const auto& is_in = [](auto v, auto l) { for (const auto& i : l) if (v == i) return true; return false; };
+		static const auto& is_op = [&](const str& s) { for (const auto& i : ops) if (s == i) return true; return false; };
 		list<str> split, fixed_split;
 		str temp_str;
 		bool literal_c = false, comment_c = false, inline_comment = false;
@@ -185,12 +196,63 @@ public:
 		split = fixed_split;
 		fixed_split.clear();
 		temp_str.clear();
-		const auto& is_in = [](const str& v, const list<str>& l) { for (const auto& i : l) if (v == i) return true; return false; };
 		enum class durum : unsigned char { no, class_name, after_class_name, class_base, class_acces, class_mem, mem_type, mem_val, mem_name, mem_after, func_args, func_body, func_var, func_code, type_alias, typedef_alias };
 		using enum durum;
 		acces_t acces = priv;
 		durum d = no;
 		bool cons_c = false;
+		list<str> temp_list;
+		static const auto& parse_args = [&]() {
+			using arg_t = mem_t::arg_t;
+			int bracket_c = 0;
+			list<arg_t> args;
+			arg_t temp_arg;
+			bool val_c = false;
+			for (const auto& i : temp_list) {
+				if (i == "(")
+					bracket_c++;
+				else if (i == ")")
+					bracket_c--;
+				if (i == "," and bracket_c == 0) {
+					val_c = false;
+					temp_arg.value = trim(temp_arg.value);
+					if (!is_in(temp_arg.type, types)) types.push_back(temp_arg.type);
+					args.push_back(temp_arg);
+					temp_arg = arg_t();
+				}
+				else {
+					if (val_c) {
+						temp_arg.value += i;
+						temp_arg.value += ' ';
+					}
+					else {
+						if (is_in(i, tokens)) {
+							temp_arg.tokens.push_back(i);
+						}
+						else if (i == "=") {
+							val_c = true;
+						}
+						else if (i == "&"s or i == "*"s or i == "&&"s) {
+							temp_arg.pointers += i;
+						}
+						else {
+							if (temp_arg.type.empty()) {
+								temp_arg.type = i;
+							}
+							else
+								temp_arg.name = i;
+						};
+					};
+				};
+			};
+			if (!temp_arg.type.empty()) {
+				temp_arg.value = trim(temp_arg.value);
+				if (!is_in(temp_arg.type, types)) types.push_back(temp_arg.type);
+				args.push_back(temp_arg);
+			};
+			temp_list.clear();
+			return args;
+		};
 		//for_each(split.begin(), split.end(), [](const auto& v) { cout << v << '\n'; });
 		int bracket_c = 0, cbracket_c = 0;
 		for (auto j = split.begin(); j != split.end(); j++) {
@@ -259,7 +321,7 @@ public:
 				}
 				else if (is_in(i, types)) {
 					temp_mem.type.name = i;
-					while (j + 1 != split.end() and (*(j + 1) == "&" or *(j + 1) == "*" or *(j + 1) == "&&" or *(j + 1) == "**")) {
+					while (j + 1 != split.end() and (*(j + 1) == "&" or *(j + 1) == "*" or *(j + 1) == "&&")) {
 						j++;
 						temp_mem.type.pointers += *j;
 					};
@@ -343,14 +405,14 @@ public:
 				if (i == ")") {
 					bracket_c--;
 					if (bracket_c == 0) {
-						temp_mem.args = ltrim(temp_mem.args);
+						temp_mem.args = parse_args();
 						d = func_body;
 					};
 				}
 				else if (i == "(")
 					bracket_c++;
 				else
-					temp_mem.args += " "s + i;
+					temp_list.push_back(i);
 				break;
 			case func_body:
 				if (i == ";") {
@@ -408,7 +470,9 @@ public:
 						cbracket_c++;
 					if (cbracket_c == 0)
 						break;
-					temp_mem.value += " "s + *j;
+					temp_mem.value += *j;
+					if (!is_in(*j, ops) and !is_in(*(j + 1), ops))
+						temp_mem.value += ' ';
 					j++;
 				};
 				temp_mem.value += " }";
@@ -432,4 +496,70 @@ public:
 	list<mem_t> members;
 private:
 	str code;
+};
+std::ostream& operator<<(std::ostream& os, const ParseClass& parser) {
+	static const auto& enum_name = [](auto en) -> str { if (en == ParseClass::acces_t::pub) return "pub"; else if (en == ParseClass::acces_t::priv) return "priv"; else if (en == ParseClass::acces_t::protect) return "protect"; return "none"; };
+	os << "Class Name: " << parser.className << '\n';
+	if (!parser.baseClass.empty()) {
+		os << "Base Classes:\n";
+		for (const auto& base : parser.baseClass)
+			os << "- " << enum_name(base.acces) << " class " << base.name << '\n';
+	};
+	if (!parser.constructors.empty()) {
+		os << "Constructors:\n";
+		for (const auto& cons : parser.constructors) {
+			os << "- " << enum_name(cons.acces) << ' ' << parser.className << "(";
+			for (const auto& i : cons.args) {
+				for (const auto& j : i.tokens)
+					os << j << ' ';
+				os << i.type << i.pointers;
+				if (!i.name.empty())
+					os << ' ' << i.name;
+				if (!i.value.empty())
+					os << " = " << i.value;
+				os << ", ";
+			};
+			if (!cons.args.empty())
+				os << "\b \b\b";
+			os << ") = " << (!cons.value.empty()?cons.value:"{ }"s) << '\n';
+		};
+	};
+	if (!parser.members.empty()) {
+		os << "Members:\n";
+		for (const auto& mem : parser.members) {
+			os << "- " << enum_name(mem.acces) << ' ';
+			for (const auto& token : mem.type.tokens)
+				os << token << ' ';
+			os << mem.type.name << mem.type.pointers << ' ';
+			if (mem.is_func) {
+				os << mem.name << "(";
+				for (const auto& i : mem.args) {
+					for (const auto& j : i.tokens)
+						os << j << ' ';
+					os << i.type << i.pointers;
+					if (!i.name.empty())
+						os << ' ' << i.name;
+					if (!i.value.empty())
+						os << " = " << i.value;
+					os << ", ";
+				};
+				if (!mem.args.empty())
+					os << "\b \b\b";
+				os << ") = ";
+			}
+			else
+				os << mem.name << " = ";
+			if (!mem.value.empty()) {
+				os << mem.value << '\n';
+			}
+			else if (mem.is_func)
+				os << "{ }\n";
+		};
+	};
+	if (!parser.types.empty()) {
+		os << "Types:\n";
+		for (const auto& type : parser.types)
+			os << "- " << type << '\n';
+	};
+	return os;
 };
