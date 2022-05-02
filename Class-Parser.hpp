@@ -58,9 +58,9 @@ public:
 		base_t temp_base;
 		var_t temp_mem;
 		func_t temp_func;
-		static const list<str>& ops = { "{", "}","[", "]", "(", ")", "<", ">", "=", "+", "-", "/", "*", "%", "&", "|", "^", ".", ":", ",", ";", "\"", "?", "==", "!=", ">=", "<=", "<<", ">>", "--", "++", "&&", "||", "+=", "-=", "*=", "/=", "%=", "^=", "|=", "&=", "->", "::" };
-		static const auto& is_in = [](auto v, auto l) { for (const auto& i : l) if (v == i) return true; return false; };
-		static const auto& is_op = [&](const str& s) { for (const auto& i : ops) if (s == i) return true; return false; };
+		const list<str>& ops = { "{", "}","[", "]", "(", ")", "<", ">", "=", "+", "-", "/", "*", "%", "&", "|", "^", ".", ":", ",", ";", "\"", "?", "==", "!=", ">=", "<=", "<<", ">>", "--", "++", "&&", "||", "+=", "-=", "*=", "/=", "%=", "^=", "|=", "&=", "->", "::" };
+		const auto& is_in = [](auto v, auto l) { for (const auto& i : l) if (v == i) return true; return false; };
+		const auto& is_op = [&](const str& s) { for (const auto& i : ops) if (s == i) return true; return false; };
 		list<str> split, fixed_split;
 		str temp_str;
 		bool literal_c = false, comment_c = false, inline_comment = false;
@@ -179,6 +179,34 @@ public:
 		};
 		split = fixed_split;
 		fixed_split.clear();
+		str temp_classtr;
+		bool class_t = false;
+		int class_bc = 0;
+		fixed_split.push_back("class");
+		for (auto i = split.begin()+1; i != split.end() - 1; i++) {
+			const auto& j = *i;
+			if (class_t == false and j == "class") {
+				class_bc = 0;
+				class_t = true;
+			};
+			if (j == "{")
+				class_bc++;
+			else if (j == "}")
+				class_bc--;
+			if (class_t) {
+				temp_classtr += j + ' ';
+			}
+			else
+				fixed_split.push_back(j);
+			if (class_t and class_bc == 0 and *(i + 1) == ";") {
+				i++;
+				classes.push_back(ParseClass(temp_classtr));
+				temp_classtr.clear();
+				class_t = false;
+			};
+		};
+		split = fixed_split;
+		fixed_split.clear();
 		for (auto i = split.begin(); i != split.end(); i++) {
 			while (i + 1 != split.end() and *i == ";" and *(i + 1) == ";")
 				i++;
@@ -194,7 +222,7 @@ public:
 		acces_t acces = priv;
 		durum d = no;
 		bool cons_c = false, is_func = false;
-		static const auto& new_temp = [&]() {
+		const auto& new_temp = [&]() {
 			const auto last_acces = temp_mem.acces;
 			temp_mem = var_t();
 			temp_mem.acces = last_acces;
@@ -202,7 +230,7 @@ public:
 			is_func = false;
 		};
 		list<str> temp_list;
-		static const auto& parse_args = [&]() {
+		const auto& parse_args = [&]() {
 			int bracket_c = 0;
 			list<arg_t> args;
 			arg_t temp_arg;
@@ -252,7 +280,6 @@ public:
 			temp_list.clear();
 			return args;
 		};
-		//for_each(split.begin(), split.end(), [](const auto& v) { cout << v << '\n'; });
 		int bracket_c = 0, cbracket_c = 0;
 		for (auto j = split.begin(); j != split.end(); j++) {
 			const auto& i = *j;
@@ -502,6 +529,7 @@ public:
 			};
 		};
 	};
+	list<ParseClass> classes;
 	list<var_t> variables;
 	list<func_t> functions;
 	list<base_t> baseClasses;
@@ -582,6 +610,11 @@ std::ostream& operator<<(std::ostream& os, const ParseClass& parser) {
 		os << "Types:\n";
 		for (const auto& type : parser.types)
 			os << "- " << type << '\n';
+	};
+	if (!parser.classes.empty()) {
+		os << "Nested Classes:\n";
+		for (const auto& clss : parser.classes)
+			os << clss << '\n';
 	};
 	return os;
 };
