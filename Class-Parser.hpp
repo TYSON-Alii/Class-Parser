@@ -14,14 +14,12 @@ inline str rtrim(str s) {
 };
 inline str trim(const str& s) { return rtrim(ltrim(s)); };
 class ParseClass {
+	enum class acces_t : unsigned char { pub, priv, protect };
+	using enum acces_t;
 public:
-	operator string();
-	operator color_string();
 	template <typename T>
 	using list = pmr::vector<T>;
 	using sstream = stringstream;
-	enum class acces_t : unsigned char { pub, priv, protect };
-	using enum acces_t;
 	struct mem_t {
 		acces_t acces = priv;
 		struct type_t {
@@ -38,7 +36,6 @@ public:
 		list<arg_t> args;
 		bool is_func = false;
 	};
-	mem_t temp_mem;
 	struct cons_t {
 		acces_t acces = priv;
 		list<str> tokens;
@@ -52,11 +49,12 @@ public:
 		str name;
 	};
 	list<base_t> baseClass;
-	base_t temp_base;
 	// list<str> keywords = { "nullptr", "false", "true" }; now not required
 	list<str> tokens = { "const", "constexpr", "virtual", "static", "inline", "explicit", "friend", "volatile", "short", "long", "signed", "unsigned" };
 	list<str> types;// = { "auto", "bool", "char", "int", "float", "double", "void", "string", "str" };
 	ParseClass(const str& _code) : code(_code) {
+		base_t temp_base;
+		mem_t temp_mem;
 		static const auto& new_temp = [&]() {
 			temp_mem.is_func = false;
 			temp_mem.value.clear();
@@ -504,6 +502,73 @@ public:
 		};
 	};
 	list<mem_t> members;
+	operator string() {
+		stringstream os;
+		static const auto& enum_name = [](auto en) -> str { if (en == ParseClass::acces_t::pub) return "pub"; else if (en == ParseClass::acces_t::priv) return "priv"; else if (en == ParseClass::acces_t::protect) return "protect"; return "none"; };
+		os << "Class Name: " << className << '\n';
+		if (!baseClass.empty()) {
+			os << "Base Classes:\n";
+			for (const auto& base : baseClass)
+				os << "- " << enum_name(base.acces) << " class " << base.name << '\n';
+		};
+		if (!constructors.empty()) {
+			os << "Constructors:\n";
+			for (const auto& cons : constructors) {
+				os << "- " << enum_name(cons.acces) << ' ' << className << "(";
+				for (const auto& i : cons.args) {
+					for (const auto& j : i.tokens)
+						os << j << ' ';
+					os << i.type << i.pointers;
+					if (!i.name.empty())
+						os << ' ' << i.name;
+					if (!i.value.empty())
+						os << " = " << i.value;
+					os << ", ";
+				};
+				if (!cons.args.empty())
+					os << "\b \b\b";
+				os << ") = " << cons.value << '\n';
+			};
+		};
+		if (!members.empty()) {
+			os << "Members:\n";
+			for (const auto& mem : members) {
+				os << "- " << enum_name(mem.acces) << ' ';
+				for (const auto& token : mem.type.tokens)
+					os << token << ' ';
+				os << mem.type.name << mem.type.pointers << ' ';
+				if (mem.is_func) {
+					os << mem.name << "(";
+					for (const auto& i : mem.args) {
+						for (const auto& j : i.tokens)
+							os << j << ' ';
+						os << i.type << i.pointers;
+						if (!i.name.empty())
+							os << ' ' << i.name;
+						if (!i.value.empty())
+							os << " = " << i.value;
+						os << ", ";
+					};
+					if (!mem.args.empty())
+						os << "\b \b\b";
+					os << ") = ";
+				}
+				else
+					os << mem.name << " = ";
+				if (!mem.value.empty()) {
+					os << mem.value << '\n';
+				}
+				else if (mem.is_func)
+					os << "{ }\n";
+			};
+		};
+		if (!types.empty()) {
+			os << "Types:\n";
+			for (const auto& type : types)
+				os << "- " << type << '\n';
+		};
+		return os.str();
+	};
 private:
 	str code;
 };
