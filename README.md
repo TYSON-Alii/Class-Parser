@@ -6,7 +6,7 @@ Features:
 - [ ] Debug
 - [ ] Templates
 - [x] using/typedef Specifier
-- [ ] Nested Classes
+- [x] Nested Classes
 - Constructors
   - [x] Accesbility (public, private or protected)
   - [x] Arguments
@@ -48,6 +48,26 @@ public: // remove comments
 	inline vex3f& move(const vex3f& xyz) noexcept { return pos += xyz; }; /* dfsafesd */
 	Shape& reset() { return (*this) = Shape(); };
 	// list<Shape*> child; now not support
+	class Nested {
+	public:
+	bool is_wow = true;
+		void wow() {
+			if (is_wow)
+				cout << "wow!!" << endl;
+			else
+				cout << "not wow." << endl;
+		};
+		class SuperNested {
+		public:
+		bool is_amazing = false;
+			void use() {
+				if (is_amazing)
+					cout << "yesyesyesyyesysyesyesyes!!" << endl;
+				else
+					cout << "not now." << endl;
+			};
+		};
+	};
 protected:
 	constexpr mat4 matrix() final;
 };
@@ -89,6 +109,26 @@ Types:
 - int
 - vex3f
 - mat4
+Nested Classes:
+Class Name: Nested
+Variables:
+- pub bool is_wow = true
+Functions:
+- pub void wow() { if(is_wow)cout<<"wow!!"<<endl;else cout<<"not wow."<<endl; }
+Types:
+- Nested
+- bool
+- void
+Nested Classes:
+Class Name: SuperNested
+Variables:
+- pub bool is_amazing = false
+Functions:
+- pub void use() { if(is_amazing)cout<<"yesyesyesyyesysyesyesyes!!"<<endl;else cout<<"not now."<<endl; }
+Types:
+- SuperNested
+- bool
+- void
 ```
 Another Example:
 ```cpp
