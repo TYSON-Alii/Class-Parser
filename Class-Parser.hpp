@@ -12,10 +12,11 @@ inline str rtrim(str s) {
 	s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
 	return s;
 };
-
 inline str trim(const str& s) { return rtrim(ltrim(s)); };
 class ParseClass {
 public:
+	operator string();
+	operator color_string();
 	template <typename T>
 	using list = pmr::vector<T>;
 	using sstream = stringstream;
@@ -65,7 +66,7 @@ public:
 			temp_mem.type.name.clear();
 			temp_mem.type.pointers.clear();
 		};
-		static const list<str>& ops = { "{", "}","[", "]", "(", ")", "<", ">", "=", "+", "-", "/", "*", "%", "&", "|", "^", ":", ",", ";", "\"", "?", "==", "!=", ">=", "<=", "<<", ">>", "--", "++", "&&", "||", "+=", "-=", "*=", "/=", "%=", "^=", "|=", "&=", "->", "::" };
+		static const list<str>& ops = { "{", "}","[", "]", "(", ")", "<", ">", "=", "+", "-", "/", "*", "%", "&", "|", "^", ".", ":", ",", ";", "\"", "?", "==", "!=", ">=", "<=", "<<", ">>", "--", "++", "&&", "||", "+=", "-=", "*=", "/=", "%=", "^=", "|=", "&=", "->", "::" };
 		static const auto& is_in = [](auto v, auto l) { for (const auto& i : l) if (v == i) return true; return false; };
 		static const auto& is_op = [&](const str& s) { for (const auto& i : ops) if (s == i) return true; return false; };
 		list<str> split, fixed_split;
@@ -416,11 +417,15 @@ public:
 				break;
 			case func_body:
 				if (i == ";") {
+					if (temp_mem.value.starts_with("="))
+						temp_mem.value = str(temp_mem.value.begin()+1, temp_mem.value.end());
+					temp_mem.value = trim(temp_mem.value);
 					if (cons_c) {
 						cons_t temp_c;
 						temp_c.acces = temp_mem.acces;
 						temp_c.tokens = temp_mem.type.tokens;
 						temp_c.args = temp_mem.args;
+						temp_c.value = temp_mem.value;
 						constructors.push_back(temp_c);
 						cons_c = false;
 					}
@@ -430,11 +435,14 @@ public:
 					d = class_mem;
 				}
 				else if (i != "{") {
-					temp_mem.value += " "s + *j;
+					temp_mem.value += *j;
+					if (!is_in(*j, ops) and !is_in(*(j + 1), ops))
+						temp_mem.value += ' ';
 					// d = func_var;
 				}
 				else {
 					cbracket_c = 1;
+					temp_mem.value = trim(temp_mem.value);
 					d = func_code;
 				};
 				break;
@@ -462,7 +470,9 @@ public:
 				};
 				break;
 			case func_code:
-				temp_mem.value += " {";
+				if (!temp_mem.value.empty())
+					temp_mem.value += ' ';
+				temp_mem.value += "{ ";
 				while (j + 1 != split.end()) {
 					if (*j == "}")
 						cbracket_c--;
@@ -521,7 +531,7 @@ std::ostream& operator<<(std::ostream& os, const ParseClass& parser) {
 			};
 			if (!cons.args.empty())
 				os << "\b \b\b";
-			os << ") = " << (!cons.value.empty()?cons.value:"{ }"s) << '\n';
+			os << ") = " << cons.value << '\n';
 		};
 	};
 	if (!parser.members.empty()) {
