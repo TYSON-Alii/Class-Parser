@@ -6,6 +6,7 @@ Features:
 - [ ] Debug
 - [ ] Templates
 - [x] using/typedef Specifier
+- [x] FunctionOperators/Cast Operators
 - [x] Nested Classes
 - Constructors
   - [x] Accesbility (public, private or protected)
@@ -32,44 +33,30 @@ Features:
 #### Example
 ```cpp
 const str& code = R"(
-class Shape : public Transform, Entity {
-public: // remove comments
-	using str = string;
-	typedef void* ptr;
-	Shape() = default;
-	Shape(const Shape&) = delete;
-	Shape(const char* t) : tag(t) { cout << "okii\n"; };
-	virtual bool Destroy(const str& falan, int** filan = nullptr, char) {
-		cout << "falan filan.. kisaca calismiyor." << '\n';
-		return false;
+class XsColor : public vex4ub {
+public:
+	using vex4ub::vex4;
+	XsColor() : vex4ub(255) { };
+	XsColor(const XsColor&) = default;
+	XsColor& operator=(const XsColor& v) { x = v.x; y = v.y; z = v.z; w = v.w; return *this; };
+	inline operator int() const { return (int(r)<<16) + (int(g)<<8) + int(b); }
+	inline operator std::string() const {
+		return ::str("R: ") + std::to_string(r) +
+			", G: " + std::to_string(g) +
+			", B: " + std::to_string(b) +
+			", A: " + std::to_string(a);
 	};
-	str tag;
-	bool froze = false, show = true;
-	inline vex3f& move(const vex3f& xyz) noexcept { return pos += xyz; }; /* dfsafesd */
-	Shape& reset() { return (*this) = Shape(); };
-	// list<Shape*> child; now not support
-	class Nested {
-	public:
-	bool is_wow = true;
-		void wow() {
-			if (is_wow)
-				cout << "wow!!" << endl;
-			else
-				cout << "not wow." << endl;
-		};
-		class SuperNested {
-		public:
-		bool is_amazing = false;
-			void use() {
-				if (is_amazing)
-					cout << "yesyesyesyyesysyesyesyes!!" << endl;
-				else
-					cout << "not now." << endl;
-			};
-		};
-	};
-protected:
-	constexpr mat4 matrix() final;
+	inline operator vex4f() const { return to_rgb32(); };
+	inline operator vex4d() const { return to_rgb64(); };
+	bool falanke;
+	byte &r = vex4ub::x, &g = vex4ub::y, &b = vex4ub::z, &a = vex4ub::w;
+	inline XsColor& hex(int hex_code) { return self = XsColor((hex_code >> 16) & 0xff, (hex_code >> 8) & 0xff, (hex_code) & 0xff); };
+	inline XsColor& hex(const ::str& hex_code) { return hex(std::stoi(hex_code, nullptr, 16)); };
+	XsColor& hsv(const vex3f& _hsv) { };
+	vex3f to_hsv() const { };
+	inline ::str to_hex() const { };
+	inline vex4f to_rgb32() const { return (vex4f() << self) / 255.f; };
+	inline vex4d to_rgb64() const { return (vex4d() << self) / 255.0; };
 };
 )";
 
@@ -81,54 +68,43 @@ auto main() -> int {
 ```
 ```
 OUTPUT:
-Class Name: Shape
+Class Name: XsColor
 Base Classes:
-- pub class Transform
-- priv class Entity
+- pub class vex4ub
 Constructors:
-- pub Shape() = default
-- pub Shape(const Shape&) = delete
-- pub Shape(const char* t) :tag(t) { cout<<"okii\n"; }
+- pub XsColor() :vex4ub(255) {  }
+- pub XsColor(const XsColor&) = default
+Cast Operators:
+- pub operator int() const { return(int(r)<<16)+(int(g)<<8)+int(b); }
+- pub operator std::string() const { return::str("R:")+std::to_string(r)+", G: "+std::to_string(g)+", B: "+std::to_string(b)+", A: "+std::to_string(a); }
+- pub operator vex4f() const { return to_rgb32(); }
+- pub operator vex4d() const { return to_rgb64(); }
 Variables:
-- pub str tag
-- pub bool froze = false
-- pub bool show = true
+- pub bool falanke
+- pub byte& r = vex4ub::x
+- pub byte& g = vex4ub::y
+- pub byte& b = vex4ub::z
+- pub byte& a = vex4ub::w
 Functions:
-- pub virtual bool Destroy(const str& falan, int** filan = nullptr, char) { cout<<"falan filan.. kisaca calismiyor."<<' \n ';return false; }
-- pub inline vex3f& move(const vex3f& xyz) noexcept { return pos+=xyz; }
-- pub Shape& reset() { return(*this)=Shape(); }
-- protect constexpr mat4 matrix() final
+- pub XsColor& operator=(const XsColor& v) { x=v.x;y=v.y;z=v.z;w=v.w;return*this; }
+- pub inline XsColor& hex(int hex_code) { return self=XsColor((hex_code>>16)&0xff,(hex_code>>8)&0xff,(hex_code)&0xff); }
+- pub inline XsColor& hex(const ::str& hex_code) { return hex(std::stoi(hex_code,nullptr,16)); }
+- pub XsColor& hsv(const vex3f& _hsv) {  }
+- pub vex3f to_hsv() const {  }
+- pub inline ::str to_hex() const {  }
+- pub inline vex4f to_rgb32() const { return(vex4f()<<self)/255.f; }
+- pub inline vex4d to_rgb64() const { return(vex4d()<<self)/255.0; }
 Types:
-- Shape
-- Transform
-- Entity
-- str
-- ptr
-- char
+- XsColor
+- vex4ub
 - bool
+- byte
 - int
+- ::str
 - vex3f
-- mat4
-Nested Classes:
-Class Name: Nested
-Variables:
-- pub bool is_wow = true
-Functions:
-- pub void wow() { if(is_wow)cout<<"wow!!"<<endl;else cout<<"not wow."<<endl; }
-Types:
-- Nested
-- bool
-- void
-Nested Classes:
-Class Name: SuperNested
-Variables:
-- pub bool is_amazing = false
-Functions:
-- pub void use() { if(is_amazing)cout<<"yesyesyesyyesysyesyesyes!!"<<endl;else cout<<"not now."<<endl; }
-Types:
-- SuperNested
-- bool
-- void
+- str
+- vex4f
+- vex4d
 ```
 Another Example:
 ```cpp
