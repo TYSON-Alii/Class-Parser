@@ -259,8 +259,11 @@ public:
 				}
 				else {
 					it++;
-					temp_value += " { ";
-					int bc = 0, cc = 0;
+					temp_value = trim(temp_value);
+					if (!temp_value.empty())
+						temp_value += ' ';
+					temp_value += "{ ";
+					int bc = 0, cc = 0, sc;
 					while (!(bc == 0 and cc == 0 and *it == "}")) {
 						if (*it == "(")
 							bc++;
@@ -270,6 +273,10 @@ public:
 							cc++;
 						else if (*it == "}")
 							cc--;
+						else if (*it == "[")
+							sc++;
+						else if (*it == "]")
+							sc--;
 						temp_value += *it;
 						if (*it == "{" or (*it == "}" and *(it+1) != ";") or *(it+1) == "}" or *it == ";" or (!is_in(*it, ops) and !is_in(*(it + 1), ops))) temp_value += ' ';
 						it++;
@@ -278,6 +285,48 @@ public:
 					temp_value = trim(temp_value);
 					list.push_back(temp);
 					new_temp();
+				};
+			};
+		};
+		const auto& arg_parse = [&](auto& it, auto& temp_arg, auto& fn) {
+			while (true) {
+				if (*it == ")") { fn.args.push_back(temp_arg); temp_arg = arg_t(); break; }
+				else if (*it == ",") fn.args.push_back(temp_arg), temp_arg = arg_t(), it++;
+				while (is_in(*it, tokens)) temp_arg.tokens.push_back(*it), it++;
+				add_t(temp_arg.type = *it);
+				it++;
+				while (is_ptr(*it)) temp_arg.pointers += *it, it++;
+				if (*it == ")") { fn.args.push_back(temp_arg); temp_arg = arg_t(); break; }
+				else if (*it != ",") {
+					temp_arg.name = *it;
+					it++;
+					if (*it == "=") {
+						it++;
+						int bc = 0, cc = 0, sc = 0;
+						while (!(bc == 0 and cc == 0 and (*it == "," or *it == ")"))) {
+							if (*it == "(")
+								bc++;
+							else if (*it == ")")
+								bc--;
+							else if (*it == "{")
+								cc++;
+							else if (*it == "}")
+								cc--;
+							else if (*it == "[")
+								cc++;
+							else if (*it == "]")
+								cc--;
+							temp_arg.value += *it;
+							if (*it == "{" or (*it == "}" and *(it + 1) != ";") or *(it + 1) == "}" or *it == ";" or !is_in(*it, ops) and !is_in(*(it + 1), ops)) temp_arg.value += ' ';
+							it++;
+						};
+						fn.args.push_back(temp_arg);
+						temp_arg = arg_t();
+						if (*it == ",")
+							it++;
+						else
+							break;
+					};
 				};
 			};
 		};
@@ -341,44 +390,8 @@ public:
 					temp_cons.acces = acces;
 					temp_cons.args;
 					arg_t temp_arg;
-					if (*it != ")") {
-						while (true) {
-							if (*it == ")") { temp_cons.args.push_back(temp_arg); temp_arg = arg_t(); break; }
-							else if (*it == ",") temp_cons.args.push_back(temp_arg), temp_arg = arg_t(), it++;
-							while (is_in(*it, tokens)) temp_arg.tokens.push_back(*it), it++;
-							add_t(temp_arg.type = *it);
-							it++;
-							while (is_ptr(*it)) temp_arg.pointers += *it, it++;
-							if (*it == ")") { temp_cons.args.push_back(temp_arg); temp_arg = arg_t(); break; }
-							else if (*it != ",") {
-								temp_arg.name = *it;
-								it++;
-								if (*it == "=") {
-									it++;
-									int bc = 0, cc = 0;
-									while (!(bc == 0 and cc == 0 and (*it == "," or *it == ")"))) {
-										if (*it == "(")
-											bc++;
-										else if (*it == ")")
-											bc--;
-										else if (*it == "{")
-											cc++;
-										else if (*it == "}")
-											cc--;
-										temp_arg.value += *it;
-										if (*it == "{" or (*it == "}" and *(it + 1) != ";") or *(it + 1) == "}" or *it == ";" or !is_in(*it, ops) and !is_in(*(it + 1), ops)) temp_arg.value += ' ';
-										it++;
-									};
-									temp_cons.args.push_back(temp_arg);
-									temp_arg = arg_t();
-									if (*it == ",")
-										it++;
-									else
-										break;
-								};
-							}
-						};
-					};
+					if (*it != ")")
+						arg_parse(it, temp_arg, temp_cons);
 					it++;
 					func_value(it, temp_cons, temp_cons.value, constructors);
 				}
@@ -404,7 +417,7 @@ public:
 					}
 					else if (*it == "=") {
 						it++;
-						int bc = 0, cc = 0;
+						int bc = 0, cc = 0, sc = 0;
 						while (not (bc == 0 and cc == 0 and (*it == ";" or *it == ","))) {
 							if (*it == "(")
 								bc++;
@@ -414,6 +427,10 @@ public:
 								cc++;
 							else if (*it == "}")
 								cc--;
+							else if (*it == "[")
+								sc++;
+							else if (*it == "]")
+								sc--;
 							temp_mem.value += *it;
 							if (*it == "{" or (*it == "}" and *(it+1) != ";") or *(it+1) == "}" or *it == ";" or !is_in(*it, ops) and !is_in(*(it + 1), ops)) temp_mem.value += ' ';
 							it++;
@@ -430,42 +447,7 @@ public:
 						it++;
 						temp_func = temp_mem;
 						arg_t temp_arg;
-						while (true) {
-							if (*it == ")") { temp_func.args.push_back(temp_arg); temp_arg = arg_t(); break; }
-							else if (*it == ",") temp_func.args.push_back(temp_arg), temp_arg = arg_t(), it++;
-							while (is_in(*it, tokens)) temp_arg.tokens.push_back(*it), it++;
-							add_t(temp_arg.type = *it);
-							it++;
-							while (is_ptr(*it)) temp_arg.pointers += *it, it++;
-							if (*it == ")") { temp_func.args.push_back(temp_arg); temp_arg = arg_t(); break; }
-							else if (*it != ",") {
-								temp_arg.name = *it;
-								it++;
-								if (*it == "=") {
-									it++;
-									int bc = 0, cc = 0;
-									while (!(bc == 0 and cc == 0 and (*it == "," or *it == ")"))) {
-										if (*it == "(")
-											bc++;
-										else if (*it == ")")
-											bc--;
-										else if (*it == "{")
-											cc++;
-										else if (*it == "}")
-											cc--;
-										temp_arg.value += *it;
-										if (*it == "{" or (*it == "}" and *(it+1) != ";") or *(it+1) == "}" or *it == ";" or !is_in(*it, ops) and !is_in(*(it + 1), ops)) temp_arg.value += ' ';
-										it++;
-									};
-									temp_func.args.push_back(temp_arg);
-									temp_arg = arg_t();
-									if (*it == ",")
-										it++;
-									else
-										break;
-								};
-							}
-						};
+						arg_parse(it, temp_arg, temp_func);
 						it++;
 						func_value(it, temp_func, temp_func.value, functions);
 					};
@@ -553,17 +535,19 @@ ostream& operator<<(ostream& os, const ParseClass::type_t& type) {
 	os << type.name << type.pointers;
 	return os;
 };
+ostream& operator<<(ostream& os, const ParseClass::arg_t& arg) {
+	for (const auto& token : arg.tokens)
+		os << token << ' ';
+	os << arg.type << arg.pointers;
+	if (!arg.name.empty())
+		os << ' ' << arg.name;
+	if (!arg.value.empty())
+		os << " = " << arg.value;
+	return os;
+};
 ostream& operator<<(ostream& os, const pmr::vector<ParseClass::arg_t>& args) {
-	for (const auto& arg : args) {
-		for (const auto& token : arg.tokens)
-			os << token << ' ';
-		os << arg.type << arg.pointers;
-		if (!arg.name.empty())
-			os << ' ' << arg.name;
-		if (!arg.value.empty())
-			os << " = " << arg.value;
-		os << ", ";
-	};
+	for (const auto& arg : args)
+		os << arg  << ", ";
 	if (!args.empty())
 		os << "\b \b\b";
 	return os;
