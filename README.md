@@ -5,11 +5,11 @@ Features:
 - [ ] Comments
 - [ ] Debug
 - [ ] Templates
-- [ ] Macros
+- [ ] Macros / Function Style Macros
 - [ ] Namespaces
 - [ ] C-Style Function Pointers
 - [x] using/typedef Specifier
-- [x] FunctionOperators/Cast Operators
+- [x] Function Operators/Cast Operators
 - [x] Nested Classes
 - Constructors
   - [x] Accesbility (public, private or protected)
