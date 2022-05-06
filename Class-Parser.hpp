@@ -120,7 +120,7 @@ public:
 		bool class_t = false;
 		int class_bc = 0;
 		fixed_split.push_back("class");
-		for (auto i = split.begin()+1; i != split.end() - 1; i++) {
+		for (auto i = split.begin()+1; i != split.end(); i++) {
 			const auto& j = *i;
 			if (class_t == false and j == "class") {
 				class_bc = 0;
@@ -135,9 +135,9 @@ public:
 			}
 			else
 				fixed_split.push_back(j);
-			if (class_t and class_bc == 0 and *(i + 1) == ";") {
+			if (class_t and class_bc == 0 and i+1 != split.end() and *(i + 1) == ";") {
 				i++;
-				classes.push_back(ParseClass(temp_classtr));
+				classes.push_back(ParseClass(temp_classtr+';'));
 				temp_classtr.clear();
 				class_t = false;
 			};
@@ -464,12 +464,12 @@ public:
 	list<cast_t> castOperators;
 private:
 	list<str> split_code(const str& code) {
-		static const auto& is_in = [](auto v, auto l)  { for (const auto& i : l) if (v == i) return true; return false; };
+		const auto& is_in = [](auto v, auto l)  { for (const auto& i : l) if (v == i) return true; return false; };
 		sort(ops.begin(), ops.end(), [](const str& first, const str& second){ return first.size() > second.size(); });
 		sort(lits.begin(), lits.end(), [](const auto& first, const auto& second){ return first.beg.size() > second.beg.size(); });
 		str temp_str;
 		list<str> split;
-		static const auto& new_splt = [&]() {
+		const auto& new_splt = [&]() {
 			if (!temp_str.empty()) {
 				split.push_back(temp_str);
 				temp_str.clear();
