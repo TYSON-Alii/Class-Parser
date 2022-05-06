@@ -5,6 +5,9 @@ Features:
 - [ ] Comments
 - [ ] Debug
 - [ ] Templates
+- [ ] Macros
+- [ ] Namespaces
+- [ ] C-Style Function Pointers
 - [x] using/typedef Specifier
 - [x] FunctionOperators/Cast Operators
 - [x] Nested Classes
