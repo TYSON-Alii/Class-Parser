@@ -61,24 +61,24 @@ public:
 	list<str> ops {
 		"{", "}","[", "]", "(", ")", "<", ">", "=", "+", "-", "/", "*", "%", "&", "|", "^", ".", ":", ",", ";", "?",
 		"==", "!=", ">=", "<=", "<<", ">>", "--", "++", "&&", "||", "+=", "-=", "*=", "/=", "%=", "^=", "|=", "&=", "->", "::",
-		"<=>", "<<=", ">>="
+		"<=>", "<<=", ">>=", "..."
 	};
 	struct lit_pair { str beg, end; };
 	list<lit_pair> lits { {"\"","\"" }, {"'","'" }, { "//","\n" }, { "/*", "*/" }, {"#", "\n"} };
-	/*
 	struct macro_t { str name, value; };
 	struct fmacro_t { str name, value; list<str> args; };
 	list<macro_t> macros = { {"and","&&" },{"or","||" },{"not","!" } };
-	*/
 	list<str> types;
 	ParseClass() = default;
 	ParseClass(const str& _code, bool is_fullcode = true) : code(_code) { parse(); };
-	void parse() {
+	void parse(const bool enable_macro = true) {
 		base_t temp_base;
 		var_t temp_mem;
 		func_t temp_func;
 		const auto& is_in = [](auto v, auto l) { for (const auto& i : l) if (v == i) return true; return false; };
 		const auto& is_op = [&](const str& s) { for (const auto& i : ops) if (s == i) return true; return false; };
+		const auto& is_macro = [&](const str& s) { for (const auto& i : macros) if (s == i.name) return true; return false; };
+		const auto& f_macro = [&](const str& s) { for (const auto& i : macros) if (s == i.name) return i; return macro_t(); };
 		const auto& is_ac = [&](const str& s) { return s == "public" or s == "private" or s == "protected"; };
 		const auto& is_ptr = [&](const str& s) { return s == "*" or s == "&" or s == "&&"; };
 		const auto& f_ac = [&](const str& s) {
@@ -92,6 +92,40 @@ public:
 		};
 		list<str> split = split_code(code), fixed_split;
 		str temp_str, temp_classtr;
+		if (enable_macro) {
+			for (const auto& i : split) {
+				if (i.starts_with("#")) {
+					if (i.starts_with("#define ")) {
+						const auto& splt = split_code(str(i.begin()+8, i.end()));
+						for (auto it = splt.begin()+1; it != splt.end(); it++) {
+							temp_str += *it;
+							if (it + 1 != splt.end())
+								if (*it == "{" or (*it == "}" and *(it+1) != ";") or *(it+1) == "}" or *it == ";" or !is_in(*it, ops) and !is_in(*(it + 1), ops) or is_in(*it, keywords))
+									temp_str += ' ';
+							/*
+							if (it + 1 != splt.end()) {
+								if ((*it == "}" and *(it + 1) != ";") or *(it+1) == "}" or !is_in(*it, ops) and !is_in(*(it + 1), ops))
+									temp_str += ' ';
+							}
+							else if (*it == "{" or *it == ";" or is_in(*it, keywords)) temp_str += ' ';
+							*/
+						};
+						macros.push_back({ splt.front(), temp_str});
+						temp_str.clear();
+					}
+					else continue;
+				}
+				else if (is_macro(i)) {
+					const auto& macro = f_macro(i);
+					const auto& splt = split_code(macro.value);
+					fixed_split.insert(fixed_split.end(), splt.begin(), splt.end());
+				}
+				else
+					fixed_split.push_back(i);
+			};
+			split = fixed_split;
+			fixed_split.clear();
+		};
 		for (auto it = split.begin(); it != split.end(); it++) {
 			auto& i = *it;
 			const auto& it1 = it + 1;
@@ -526,6 +560,7 @@ private:
 			temp_str += i;
 		_exit:;
 		};
+		if (!temp_str.empty()) split.push_back(temp_str);
 		return split;
 	};
 };
